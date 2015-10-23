@@ -78,9 +78,13 @@ end
 
 if arg[1] == nil then
 	print(string.format([[
-Usage: %s map [filter]
-	map usually at ~/Library/Developer/Xcode/DerivedData/xxx/Build/Intermediates/xxx.build/Debug-iphoneos/xx.build
-	filter contans file name that used to print, default to print all]], arg[0]))
+Usage: %s linkmap [filter]
+	linkmap depends on your project setting.
+	usually at ~/Library/Developer/Xcode/DerivedData/xxx/Build/Intermediates/xxx.build/Debug-iphoneos/xx.build
+	
+	filter is a file contans file names, default to print all.
+	`find . -type f | xargs basename > filter.txt`, simple way to generate filter for current directory.
+	]], arg[0]))
 	return
 end
 
