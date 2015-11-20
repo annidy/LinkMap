@@ -7,7 +7,7 @@ syb_tbl = {}   		-- {[3]=47}
 filter_tbl = nil	-- {'Test.o'}
 
 function process_object(line)
-	local k, v = string.match(line, '%[%s?(%d+)%] (.*)')
+	local k, v = string.match(line, '%[%s*(%d*)%] (.*)')
 	if k == 0 or k == nil or v == nil then
 		return
 	end
@@ -15,12 +15,14 @@ function process_object(line)
 	if m == nil then
 		f = string.match(v, '([^/]*)$')
 	end
+	if f == nil then
+		return
+	end
 	obj_tbl[k] = {f, m}
-	-- print(k)
 end
 
 function process_symbol(line)
-	local s, i = string.match(line, '%s0x(%x+)%s%[%s?(%d+)%]')
+	local s, i = string.match(line, '%s0x(%x+)%s%[%s*(%d*)%]')
 	if s == nil or i == nil then
 		return
 	end
@@ -84,6 +86,8 @@ Usage: %s linkmap [filter]
 	
 	filter is a file contans file names, default to print all.
 	`find . -type f | xargs basename > filter.txt`, simple way to generate filter for current directory.
+
+	`awk -F, '{sum+=$2} END {print sum}'` is the fast way to calc total
 	]], arg[0]))
 	return
 end
