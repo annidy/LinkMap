@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
--- introduce: http://blog.cnbang.net/tech/2296/
+-- http://www.jianshu.com/p/92a041b1b825
 
 obj_tbl = {}   		-- {[3]={file, module}}
 syb_tbl = {}   		-- {[3]=47}
