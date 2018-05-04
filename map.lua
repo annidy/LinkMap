@@ -5,6 +5,7 @@
 obj_tbl = {}   		-- {[3]={file, module}}
 syb_tbl = {}   		-- {[3]=47}
 filter_tbl = nil	-- {'Test.o'}
+appname = nil
 
 function process_object(line)
 	local k, v = string.match(line, '%[%s*(%d*)%] (.*)')
@@ -51,38 +52,36 @@ function process(path)
 	end
 end
 
-function summy(filter)
-	local filter_app = false
-	local appname
-	if filter ~= nil then
-		filter_tbl = {}
-		for line in io.lines(filter) do 
-			local ext = line:match('[^.]+$')
-			if ext == "h" then
-				-- header file ignore
-			elseif ext == "a" then
-				filter_tbl[line] = true
-			elseif ext == "framework" then   -- framework
-				local symb = line:sub(1, -2-(ext:len()))
-				filter_tbl[symb] = true
-			elseif ext == "app" then  
-				filter_app = true
-				appname = line
-			elseif ext == nil then
-				-- ignore
-			else
-				local symb = line:sub(1, -1-(ext:len())).."o"
-				filter_tbl[symb] = true
-			end
-		end
-	end
+function feed_filter(filter_txt)
+    if filter_tbl == nil then
+        filter_tbl = {}
+    end
+    local ext = filter_txt:match('[^.]+$')
+    if ext == "h" then
+        -- header file ignore
+    elseif ext == "a" then
+        filter_tbl[filter_txt] = true
+    elseif ext == "framework" then   -- framework
+        local symb = filter_txt:sub(1, -2-(ext:len()))
+        filter_tbl[symb] = true
+    elseif ext == "app" then  
+        appname = filter_txt
+    elseif ext == nil then
+        -- ignore
+    else
+        local symb = filter_txt:sub(1, -1-(ext:len())).."o"
+        filter_tbl[symb] = true
+    end
+end
+
+function summy()
 	for i, s in pairs(syb_tbl) do
 		local file, module_ = unpack(obj_tbl[i])
 		if filter_tbl then
 			if filter_tbl[file] or filter_tbl[module_] then
 				print(string.format("%s,%d,%s",file, s, module_))
 			end
-			if module_ == nil and filter_app then
+			if module_ == nil and appname ~= nil then
 				print(string.format("%s,%d,%s",file, s, appname))
 			end
 		else
@@ -91,13 +90,20 @@ function summy(filter)
 	end
 end
 
+function file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
+-------------------------- main -----------------------
+
 if arg[1] == nil then
 	print(string.format([[
 Usage: %s linkmap [filter]
 	linkmap depends on your project setting.
-	usually at ~/Library/Developer/Xcode/DerivedData/xxx/Build/Intermediates/xxx.build/Debug-iphoneos/xx.build
+	usually at ~/Library/Developer/Xcode/DerivedData/xxx/Build/Intermediates/xxx.build/Debug-iphoneos/xx.build/xxx-LinkMap-normal-arm64.txt
 	
-	filter is a file contans file|lib|framework|app names, default to print all.
+	filter is (a file contans) file|lib|framework|app names, default to print all.
 	`find . -type f | xargs basename > filter.txt`, simple way to generate filter for current directory.
 
 	`awk -F, '{sum+=$2} END {print sum}'` is the fast way to calc total
@@ -105,5 +111,15 @@ Usage: %s linkmap [filter]
 	return
 end
 
+if arg[2] ~= nil then
+    if file_exists(arg[2]) then
+        for line in io.lines(arg[2]) do 
+            feed_filter(line)
+        end
+    else
+        feed_filter(arg[2])
+    end
+end
+
 process(arg[1])
-summy(arg[2])
+summy()
