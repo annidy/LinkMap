@@ -106,7 +106,12 @@ Usage: %s linkmap [filter]
 	filter is (a file contans) file|lib|framework|app names, default to print all.
 	`find . -type f | xargs basename > filter.txt`, simple way to generate filter for current directory.
 
-	`awk -F, '{sum+=$2} END {print sum}'` is the fast way to calc total
+    `awk -F, '{sum+=$2} END {print sum}'` is the fast way to calc total
+    
+    or better print format
+
+    `awk -F, 'function human(x) { if (x<1000) {return x} else {x/=1024} s="kMGTEPZY"; while (x>=1000 && length(s)>1) {x/=1024; s=substr(s,2)} return int(x+0.5) substr(s,1,1) } {sum+=$2} END { print human(sum)}'`
+
 	]], arg[0]))
 	return
 end
