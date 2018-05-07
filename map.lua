@@ -110,7 +110,7 @@ Usage: %s linkmap [filter]
     
     or better print format
 
-    `awk -F, 'function human(x) { if (x<1000) {return x} else {x/=1024} s="kMGTEPZY"; while (x>=1000 && length(s)>1) {x/=1024; s=substr(s,2)} return int(x+0.5) substr(s,1,1) } {sum+=$2} END { print human(sum)}'`
+    `awk -F, 'function human(x) {CONVFMT="%.1f"; if (x<1000) {return x} else {x/=1024} s="kMGTEPZY"; while (x>=1000 && length(s)>1) {x/=1024; s=substr(s,2)} return (x) substr(s,1,1) } {sum+=$2} END { print human(sum)}'`
 
 	]], arg[0]))
 	return
