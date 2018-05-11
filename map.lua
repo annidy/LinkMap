@@ -23,6 +23,15 @@ function process_object(line)
 end
 
 function process_symbol(line)
+	if string.find(line, "literal%-cstring") or string.find(line, "literal string") 
+		or string.find(line, "CFString") or string.find(line, "byte%-literal") 
+		or string.find(line, "objc%-class%-ref") or string.find(line, "objc%-cat%-list") then
+		-- this maybe random assign to symbol file
+		return
+	end
+	-- if string.find(line, "objc%-class%-ref") or string.find(line, "objc%-cat%-list") then
+	-- 	return
+	-- end
 	local s, i = string.match(line, '%s0x(%x+)%s%[%s*(%d*)%]')
 	if s == nil or i == nil then
 		return
@@ -32,7 +41,10 @@ function process_symbol(line)
 	else
 		syb_tbl[i] = syb_tbl[i] + tonumber(s, 16)
 	end
-	-- print(i)
+
+	-- if i == 1082 or i == "1082" then
+	-- 	print("111", line)
+	-- end
 end
 
 -------------------------------------------------------------
@@ -40,12 +52,15 @@ end
 function process(path)
 	local fun = nil
 	for line in io.lines(path) do 
-		if line:match("# Object files") ~= nil then
+		if line:match("^# Object files") ~= nil then
 			fun = process_object
-		elseif line:match("# Section") ~= nil then
+		elseif line:match("^# Section") ~= nil then
 			fun = nil
-		elseif line:match("# Symbols") ~= nil then
+		elseif line:match("^# Symbols") ~= nil then
 			fun = process_symbol
+		elseif line:match("^# Dead Stripped") ~= nil then
+			fun = nil
+			-- print(line)
 		elseif fun ~= nil then
 			fun(line)
 		end
@@ -110,7 +125,7 @@ Usage: %s linkmap [filter]
     
     or better print format
 
-    `awk -F, 'function human(x) {CONVFMT="%.1f"; if (x<1000) {return x} else {x/=1024} s="kMGTEPZY"; while (x>=1000 && length(s)>1) {x/=1024; s=substr(s,2)} return (x) substr(s,1,1) } {sum+=$2} END { print human(sum)}'`
+    `awk -F, 'function human(x) {CONVFMT="%%.1f"; if (x<1000) {return x} else {x/=1024} s="kMGTEPZY"; while (x>=1000 && length(s)>1) {x/=1024; s=substr(s,2)} return (x) substr(s,1,1) } {sum+=$2} END { print human(sum)}'`
 
 	]], arg[0]))
 	return
