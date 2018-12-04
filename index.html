@@ -1,0 +1,73 @@
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Link Map图形化分析</title>
+    <script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+</head>
+
+<body>
+    <div id="container" style="width: 800px; height: 600px; margin: 0 auto"></div>
+    <script language="JavaScript">
+        function bytesToSize(bytes) {
+            if (bytes > 1024) {
+                bytes = Math.floor(bytes/1024);
+                sz = "KB";
+            }
+            if (bytes > 1024) {
+                bytes = bytes/1024;
+                bytes = bytes.toFixed(2);
+                sz = "M";
+            }
+            return bytes + ' ' + sz;
+        };
+        $(document).ready(function () {
+            var chart = {
+                plotBackgroundColor: null,
+                plotBorderWidth: null,
+                plotShadow: false
+            };
+            var title = {
+                text: '2014 年各浏览器市场占有比例'
+            };
+            var tooltip = {
+                formatter: function () {
+                    return this.point.name+ ':' + bytesToSize(this.point.y)
+                }
+            };
+            var plotOptions = {
+                pie: {
+                    allowPointSelect: true,
+                    cursor: 'pointer',
+                    dataLabels: {
+                        enabled: true,
+                        format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+                        style: {
+                            color: (Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black'
+                        }
+                    },
+                    events: {
+                        click: function (event) {
+                            window.navigate(document.location.toString()+"/"+event.point.name)
+                        }
+                    }
+                }
+            };
+            var series = [{
+                type: 'pie',
+                name: 'Browser share',
+                data: __datalist__
+            }];
+
+            var json = {};
+            json.chart = chart;
+            json.title = title;
+            json.tooltip = tooltip;
+            json.series = series;
+            json.plotOptions = plotOptions;
+            $('#container').highcharts(json);
+        });
+    </script>
+</body>
+</html>
