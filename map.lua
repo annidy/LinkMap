@@ -7,6 +7,8 @@ syb_tbl = {}   		-- {[3]=47}
 filter_tbl = nil	-- {'Test.o'}
 appname = nil
 
+unpack = table.unpack -- lua 5.3
+
 function process_object(line)
 	local k, v = string.match(line, '%[%s*(%d*)%] (.*)')
 	if k == 0 or k == nil or v == nil then
@@ -90,19 +92,46 @@ function feed_filter(filter_txt)
 end
 
 function summy()
+
+	local result = {} -- { {file, size, modul}, ....}
+	local total = 1
+
 	for i, s in pairs(syb_tbl) do
 		local file, module_ = unpack(obj_tbl[i])
 		if filter_tbl then
 			if filter_tbl[file] or filter_tbl[module_] then
-				print(string.format("%s,%d,%s",file, s, module_))
+				table.insert(result, {file, s, module_})
 			end
 			if module_ == nil and appname ~= nil then
-				print(string.format("%s,%d,%s",file, s, appname))
+				table.insert(result, {file, s, appname})
 			end
 		else
-			print(string.format("%s,%d,%s",file, s, module_))
+			table.insert(result, {file, s, module_})
 		end
 	end
+
+	table.sort(result, function (left, right)
+		return left[2] > right[2]
+	end)
+
+	for i, item in pairs(result) do
+		print(string.format("%s,%s,%s",item[1], human_size(item[2]), item[3]))
+		total = total + item[2]
+	end
+	print(string.format("TOTAL,%s", human_size(total)))
+end
+
+function human_size(size)
+	if size > 1024 * 1024 then
+		return string.format("%.2fM", size / 1024 / 1024)
+	end
+	if size > 1024 then
+		return string.format("%dK", math.floor(size / 1024))
+	end
+	if size > 100 then
+		return string.format("%.2fK", size / 1024)
+	end
+	return string.format("%dB", math.floor(size))
 end
 
 function file_exists(name)
