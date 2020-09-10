@@ -98,8 +98,16 @@ export class LinkMapParser {
         }
     }
 
-    getModuleSize(module: string): number {
-        return 0
+    getModuleSize(module: string | RegExp): Array<[string, number]> {
+        let result = new Array<[string, number]>()
+        for (const item of this.objMap) {
+            if (item[1].module) {
+                if (item[1].module.match(module)) {
+                    result.push([item[1].file || "unknown", item[1].size])
+                }
+            }
+        }
+        return result.sort((a, b) => b[1] - a[1])
     }
 
     getFileSize(file: string): number {
