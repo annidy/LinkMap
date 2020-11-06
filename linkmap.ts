@@ -110,6 +110,23 @@ export class LinkMapParser {
         return result.sort((a, b) => b[1] - a[1])
     }
 
+    getModuleList(): Array<string> {
+        let result = new Array<string>()
+
+        let moduleset = new Set
+        for (const item of this.objMap) {
+            if (item[1].module) {
+                moduleset.add(item[1].module)
+            }
+        }
+
+        moduleset.forEach((value: string, key) => {
+            result.push(value)
+        })
+
+        return result
+    }
+
     getFileSize(file: string): number {
         return 0
     }

@@ -127,16 +127,16 @@ var LinkMapParser = /** @class */ (function () {
         }
         return result.sort(function (a, b) { return b[1] - a[1]; });
     };
-    LinkMapParser.prototype.getFileSize = function (file) {
-        return 0;
-    };
-    LinkMapParser.prototype.getTotalSize = function () {
+    LinkMapParser.prototype.getModuleList = function () {
         var e_2, _a;
-        var result = 0;
+        var result = new Array();
+        var moduleset = new Set;
         try {
             for (var _b = __values(this.objMap), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var item = _c.value;
-                result += item[1].size;
+                if (item[1].module) {
+                    moduleset.add(item[1].module);
+                }
             }
         }
         catch (e_2_1) { e_2 = { error: e_2_1 }; }
@@ -145,6 +145,30 @@ var LinkMapParser = /** @class */ (function () {
                 if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
             }
             finally { if (e_2) throw e_2.error; }
+        }
+        moduleset.forEach(function (value, key) {
+            result.push(value);
+        });
+        return result;
+    };
+    LinkMapParser.prototype.getFileSize = function (file) {
+        return 0;
+    };
+    LinkMapParser.prototype.getTotalSize = function () {
+        var e_3, _a;
+        var result = 0;
+        try {
+            for (var _b = __values(this.objMap), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var item = _c.value;
+                result += item[1].size;
+            }
+        }
+        catch (e_3_1) { e_3 = { error: e_3_1 }; }
+        finally {
+            try {
+                if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+            }
+            finally { if (e_3) throw e_3.error; }
         }
         return result;
     };
