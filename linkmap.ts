@@ -1,3 +1,4 @@
+import { readFile } from "fs";
 
 const lineByLine = require('n-readlines');
 const _ = require('lodash')
@@ -7,18 +8,18 @@ function basename(path: string) {
  }
 
 class LinkObject {
-    index = 0
+    index: string
     file: string | null = null
     module: string | null = null
     size = 0
     constructor(line: string) {
-        var res = line.match(/\[\s*(\d+)\] (.*)/)
+        var res = line.match(']')
         if (!res) {
-            return
+            throw `${line}: synax error`
         }
-        this.index = parseInt(res[1])
-        let path = res[2]
-        res = path.match(/\((.*)\)/)
+        this.index = line.substr(0, res.index+1)
+        let path = line.substr(res.index+2)
+        res = path.match(/\((.*)\)$/)
         if (res) {
             this.file = res[1]
             this.module = basename(path.substr(0, res.index))
@@ -29,72 +30,73 @@ class LinkObject {
 }
 
 class SymbolObject {
-    size = 0
-    index = 0
+    size: number
+    index: string
 
     constructor(line: string) {
-        if (line.match('literal%-cstring') || line.match('literal string')
-        || line.match("CFString")
-        || line.match('byte%-literal')
-        || line.match('objc%-class%-ref')
-        || line.match("objc%-cat%-list")) {
-            return
+        var res = line.split('\t')
+        if (!res || res.length != 3) {
+            throw `${line}: synax error`
         }
-
-        var res = line.match(/([0-9xA-F]+)\s+([0-9xA-F]+)/)
-        if (!res) {
-            return
+        this.size = parseInt(res[1])
+        var path_range = res[2].match(']')
+        if (!path_range) {
+            throw `${line}: synax error`
         }
-        this.size = parseInt(res[2])
-        res = line.match(/\[(.*)\]/)
-        if (!res) {
-            return
-        }
-        this.index = parseInt(res[1])
+        this.index = res[2].substr(0, path_range.index+1)
     }
 }
 
 export class LinkMapParser {
-    objMap = new Map<number, LinkObject>()
+    objMap = new Map<string, LinkObject>()
 
     innerProc: any | null
 
     constructor(path: string) {
         const liner = new lineByLine(path);
         let line;
+        var reachFiles = false
+        var reachSymbols = false
+        var reachSections = false
+        var reachDeadStrippedSymbols = false
         while (line = liner.next()) {
-            this.process(line.toString('ascii'))
-        }
-    }
-
-    process_object(line: string) {
-        let lo = new LinkObject(line)
-        if (lo) {
-            this.objMap.set(lo.index, lo)
-        }
-    }
-
-    process_symbol(line: string) {
-        let so = new SymbolObject(line) 
-        if (so) {
-            let lo = this.objMap.get(so.index)
-            if (lo) {
-                lo.size += so.size
+            line = line.toString('ascii')
+            if (line.match(/^#/)) {
+                if (line.match("# Object files")) {
+                    reachFiles = true
+                } else if (line.match("# Section")) {
+                    reachSections = true
+                } else if (line.match("# Symbols")) {
+                    reachSymbols = true
+                } else if (line.match("# Dead Stripped Symbols")) {
+                    reachDeadStrippedSymbols = true
+                }
+            } else {
+                if (reachFiles && !reachSections && !reachSymbols && !reachDeadStrippedSymbols) {
+                    this.process_object(line)
+                } else if (reachFiles && reachSections && reachSymbols && !reachDeadStrippedSymbols) {
+                    this.process_symbol(line)
+                }
             }
         }
     }
 
-    process(line: string) {
-        if (line.match("# Object files")) {
-            this.innerProc = this.process_object
-        } else if (line.match("# Section")) {
-            this.innerProc = null
-        } else if (line.match("# Symbols")) {
-            this.innerProc = this.process_symbol
-        } else if (line.match("# Dead Stripped")) {
-            this.innerProc = null
-        } else if (this.innerProc) {
-            this.innerProc(line)
+    process_object(line: string) {
+        try {
+            let lo = new LinkObject(line)
+            this.objMap.set(lo.index, lo)
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    process_symbol(line: string) {
+        try {
+            let so = new SymbolObject(line) 
+            let lo = this.objMap.get(so.index)
+            lo.size += so.size
+        } catch (error) {
+            console.error(error)
         }
     }
 

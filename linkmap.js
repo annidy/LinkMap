@@ -19,17 +19,16 @@ function basename(path) {
 }
 var LinkObject = /** @class */ (function () {
     function LinkObject(line) {
-        this.index = 0;
         this.file = null;
         this.module = null;
         this.size = 0;
-        var res = line.match(/\[\s*(\d+)\] (.*)/);
+        var res = line.match(']');
         if (!res) {
-            return;
+            throw line + ": synax error";
         }
-        this.index = parseInt(res[1]);
-        var path = res[2];
-        res = path.match(/\((.*)\)/);
+        this.index = line.substr(0, res.index + 1);
+        var path = line.substr(res.index + 2);
+        res = path.match(/\((.*)\)$/);
         if (res) {
             this.file = res[1];
             this.module = basename(path.substr(0, res.index));
@@ -42,25 +41,16 @@ var LinkObject = /** @class */ (function () {
 }());
 var SymbolObject = /** @class */ (function () {
     function SymbolObject(line) {
-        this.size = 0;
-        this.index = 0;
-        if (line.match('literal%-cstring') || line.match('literal string')
-            || line.match("CFString")
-            || line.match('byte%-literal')
-            || line.match('objc%-class%-ref')
-            || line.match("objc%-cat%-list")) {
-            return;
+        var res = line.split('\t');
+        if (!res || res.length != 3) {
+            throw line + ": synax error";
         }
-        var res = line.match(/([0-9xA-F]+)\s+([0-9xA-F]+)/);
-        if (!res) {
-            return;
+        this.size = parseInt(res[1]);
+        var path_range = res[2].match(']');
+        if (!path_range) {
+            throw line + ": synax error";
         }
-        this.size = parseInt(res[2]);
-        res = line.match(/\[(.*)\]/);
-        if (!res) {
-            return;
-        }
-        this.index = parseInt(res[1]);
+        this.index = res[2].substr(0, path_range.index + 1);
     }
     return SymbolObject;
 }());
@@ -69,43 +59,56 @@ var LinkMapParser = /** @class */ (function () {
         this.objMap = new Map();
         var liner = new lineByLine(path);
         var line;
+        var reachFiles = false;
+        var reachSymbols = false;
+        var reachSections = false;
+        var reachDeadStrippedSymbols = false;
         while (line = liner.next()) {
-            this.process(line.toString('ascii'));
+            line = line.toString('ascii');
+            if (line.match(/^#/)) {
+                if (line.match("# Object files")) {
+                    reachFiles = true;
+                }
+                else if (line.match("# Section")) {
+                    reachSections = true;
+                }
+                else if (line.match("# Symbols")) {
+                    reachSymbols = true;
+                }
+                else if (line.match("# Dead Stripped Symbols")) {
+                    reachDeadStrippedSymbols = true;
+                }
+            }
+            else {
+                if (reachFiles && !reachSections && !reachSymbols && !reachDeadStrippedSymbols) {
+                    this.process_object(line);
+                }
+                else if (reachFiles && reachSections && reachSymbols && !reachDeadStrippedSymbols) {
+                    this.process_symbol(line);
+                }
+            }
         }
     }
     LinkMapParser.prototype.process_object = function (line) {
-        var lo = new LinkObject(line);
-        if (lo) {
+        try {
+            var lo = new LinkObject(line);
             this.objMap.set(lo.index, lo);
+        }
+        catch (error) {
+            console.error(error);
         }
     };
     LinkMapParser.prototype.process_symbol = function (line) {
-        var so = new SymbolObject(line);
-        if (so) {
+        try {
+            var so = new SymbolObject(line);
             var lo = this.objMap.get(so.index);
-            if (lo) {
-                lo.size += so.size;
-            }
+            lo.size += so.size;
+        }
+        catch (error) {
+            console.error(error);
         }
     };
-    LinkMapParser.prototype.process = function (line) {
-        if (line.match("# Object files")) {
-            this.innerProc = this.process_object;
-        }
-        else if (line.match("# Section")) {
-            this.innerProc = null;
-        }
-        else if (line.match("# Symbols")) {
-            this.innerProc = this.process_symbol;
-        }
-        else if (line.match("# Dead Stripped")) {
-            this.innerProc = null;
-        }
-        else if (this.innerProc) {
-            this.innerProc(line);
-        }
-    };
-    LinkMapParser.prototype.getModuleSize = function (module) {
+    LinkMapParser.prototype.getModuleFileSize = function (module) {
         var e_1, _a;
         var result = new Array();
         try {
@@ -113,7 +116,7 @@ var LinkMapParser = /** @class */ (function () {
                 var item = _c.value;
                 if (item[1].module) {
                     if (item[1].module.match(module)) {
-                        result.push([item[1].file || "unknown", item[1].size]);
+                        result.push([item[1].file || "unknown", item[1].size, item[1].module]);
                     }
                 }
             }
